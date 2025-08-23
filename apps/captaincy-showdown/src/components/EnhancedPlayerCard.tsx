@@ -123,7 +123,7 @@ export const EnhancedPlayerCard: React.FC<EnhancedPlayerCardProps> = ({
   return (
     <div className={`relative ${className}`}>
       {/* Glassmorphism Card */}
-      <div
+    <div
         className={`
           relative overflow-hidden rounded-2xl cursor-pointer
           bg-white bg-opacity-10 backdrop-blur-xl border border-white border-opacity-20
@@ -141,9 +141,19 @@ export const EnhancedPlayerCard: React.FC<EnhancedPlayerCardProps> = ({
   onKeyDown={handleKeyDown}
   tabIndex={0}
   role="button"
+  data-player-card
   aria-label={`Select ${player.name} as captain candidate`}
   aria-pressed={isSelected}
       >
+        {/* Watermark: centered at top, small, low opacity, decorative */}
+        <img
+          src={"/logos and brand art/Watermark.svg"}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none select-none"
+          style={{ position: 'absolute', top: 212, left: '50%', transform: 'translateX(-50%)', width: 22, height: 'auto', opacity: 0.25 }}
+        />
+
         {/* Top accent gradient bar */}
         <div 
           className="absolute top-0 left-0 right-0 h-1"
@@ -154,9 +164,9 @@ export const EnhancedPlayerCard: React.FC<EnhancedPlayerCardProps> = ({
 
         {/* Floating Stats */}
         {showFloatingStats && floatingLabel && (
-          <div className="absolute top-5 right-5">
+      <div className="absolute top-5 right-5">
             <div 
-              className="text-brand-green px-3 py-1 rounded-xl text-xs font-bold border border-brand-green border-opacity-30"
+        className="inline-flex items-center justify-center whitespace-nowrap leading-none text-brand-green px-3 py-1 rounded-xl text-xs font-bold border border-brand-green border-opacity-30"
               style={{
                 backgroundColor: 'rgba(2, 235, 174, 0.2)',
                 borderColor: 'rgba(2, 235, 174, 0.3)'
@@ -316,7 +326,7 @@ export const EnhancedPlayerCard: React.FC<EnhancedPlayerCardProps> = ({
 
         {/* Selection indicator */}
         {isSelected && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2" data-hide-on-export>
             <div 
               className="text-white px-4 py-1 rounded-full text-xs font-bold"
               style={{ backgroundColor: '#FF6A4D' }}
