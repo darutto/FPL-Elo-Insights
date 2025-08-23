@@ -105,6 +105,8 @@ export const EnhancedApp: React.FC<EnhancedAppProps> = ({
   const [selectedPlayers, setSelectedPlayers] = useState<Set<number>>(new Set());
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [query, setQuery] = useState<string>('');
+  const shareIcon = "/logos and brand art/share.svg";
+  const watermark = "/logos and brand art/Watermark.svg";
 
   const positions = ['All', 'Forward', 'Midfielder', 'Defender'];
   const sortOptions = ['Score', 'Price', 'Ownership', 'Form'];
@@ -144,11 +146,15 @@ export const EnhancedApp: React.FC<EnhancedAppProps> = ({
   }, [players, loadedPlayers, selectedPosition, sortBy]);
 
   const handlePlayerSelect = (playerId: number) => {
-    if (!isCompareMode) return;
-    const next = new Set(selectedPlayers);
-    if (next.has(playerId)) next.delete(playerId);
-  else if (next.size < 2) next.add(playerId);
-    setSelectedPlayers(next);
+    if (isCompareMode) {
+      const next = new Set(selectedPlayers);
+      if (next.has(playerId)) next.delete(playerId);
+      else if (next.size < 2) next.add(playerId);
+      setSelectedPlayers(next);
+    } else {
+      // Single selection mode: toggle the one card
+      setSelectedPlayers((prev) => (prev.has(playerId) ? new Set() : new Set([playerId])));
+    }
   };
 
   return (
@@ -278,6 +284,77 @@ export const EnhancedApp: React.FC<EnhancedAppProps> = ({
         >
           Compare Mode {isCompareMode && `(${selectedPlayers.size}/2)`}
         </button>
+
+        {/* Share button next to Compare Mode */}
+        <button
+          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all duration-200 backdrop-blur-sm bg-white/10 text-gray-200 border border-white/20 hover:bg-white/20"
+          title="Share selected"
+          onClick={async () => {
+            const { toPng } = await import('html-to-image');
+            // Find currently displayed cards (either selected two in compare or full list)
+            const grid = document.querySelector('.cards-grid') as HTMLElement | null;
+            if (!grid) return;
+            // If compare mode and two selected -> export both together; else if one selected -> export that
+            const allCards = Array.from(grid.querySelectorAll('[data-player-card]')) as HTMLElement[];
+            // Prefer explicitly selected cards (aria-pressed=true)
+            let cards: HTMLElement[] = allCards.filter((c) => c.getAttribute('aria-pressed') === 'true');
+            if (cards.length === 0) {
+              if (isCompareMode) return; // in compare mode require explicit selection
+              if (allCards.length > 0) cards = [allCards[0]]; // fallback single when not in compare
+            }
+            if (cards.length === 0) return;
+
+            // Build export container side-by-side for 2, or single for 1
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.gap = '16px';
+            container.style.padding = '16px';
+            container.style.alignItems = 'stretch';
+            // Preserve app background (including gradients)
+            const bg = getComputedStyle(document.body);
+            container.style.backgroundColor = bg.backgroundColor || '#211F29';
+            if (bg.backgroundImage && bg.backgroundImage !== 'none') {
+              container.style.backgroundImage = bg.backgroundImage;
+              container.style.backgroundSize = bg.backgroundSize;
+              container.style.backgroundPosition = bg.backgroundPosition;
+              container.style.backgroundRepeat = bg.backgroundRepeat;
+            }
+            // Clone each selected card; watermark already present in card
+            cards.forEach((card) => {
+              const rect = card.getBoundingClientRect();
+              const clone = card.cloneNode(true) as HTMLElement;
+              clone.style.position = 'relative';
+              // Fix width/height to match on-screen to avoid squeezing
+              clone.style.width = `${Math.round(rect.width)}px`;
+              clone.style.height = `${Math.round(rect.height)}px`;
+              clone.style.flex = '0 0 auto';
+              // Remove selected badge if present
+              const toHide = clone.querySelector('[data-hide-on-export]');
+              if (toHide && toHide.parentElement) toHide.parentElement.removeChild(toHide);
+              container.appendChild(clone);
+            });
+            // Mount offscreen
+            const host = document.createElement('div');
+            host.style.position = 'fixed';
+            host.style.left = '-9999px';
+            host.style.top = '0';
+            host.appendChild(container);
+            document.body.appendChild(host);
+            try {
+              const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: Math.max(2, window.devicePixelRatio || 1) });
+              const a = document.createElement('a');
+              const base = isCompareMode && cards.length > 1 ? 'captaincy_compare' : 'captaincy_card';
+              a.download = `${base}_${selectedSeason || 'season'}_gw${typeof selectedGw === 'number' ? selectedGw : ''}.png`;
+              a.href = dataUrl;
+              a.click();
+            } finally {
+              document.body.removeChild(host);
+            }
+          }}
+        >
+          <img src={shareIcon} alt="Share" className="w-5 h-5"/>
+          Share
+        </button>
       </div>
 
       {isCompareMode && (
@@ -310,7 +387,7 @@ export const EnhancedApp: React.FC<EnhancedAppProps> = ({
           >Retry</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 max-w-7xl mx-auto">
+  <div className="cards-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 max-w-7xl mx-auto">
           {(isCompareMode && selectedPlayers.size === 2
             ? filteredAndSortedPlayers.filter(p => selectedPlayers.has(p.player_id))
             : filteredAndSortedPlayers
